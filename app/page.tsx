@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation"
 
 // Import the AnimatedLogo component
 import { AnimatedLogo } from "@/components/AnimatedLogo"
-import { CustomDonateButton } from "@/components/CustomDonateButton"
+
 
 // Define a file type for our file list
 type FileItem = {
@@ -975,7 +975,7 @@ export default function Home() {
         </div>
         
         <div className="flex items-center gap-3 md:gap-4">
-          <CustomDonateButton />
+          
           <div className="relative" ref={dropdownRef}>
             <button
               className="flex items-center gap-1 text-[#4b5563] dark:text-[#e5e7eb]"
