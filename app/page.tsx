@@ -17,6 +17,10 @@ type FileItem = {
   name: string
   size: string
   originalFile: File
+  validationStatus?: {
+    hasContent: boolean
+    needsReplacement: boolean
+  }
 }
 
 // Keep only the dynamic import
@@ -79,6 +83,7 @@ const DocumentProcessing = ({
   handleBackStep,
   text,
   files,
+  setFiles,
   language,
 }: {
   handleReset: () => void
@@ -86,6 +91,7 @@ const DocumentProcessing = ({
   handleBackStep: () => void
   text: any
   files: FileItem[]
+  setFiles: React.Dispatch<React.SetStateAction<FileItem[]>>
   language: string
 }) => {
   const [progress, setProgress] = useState(0)
@@ -128,6 +134,11 @@ const DocumentProcessing = ({
         const file = files[i]
         const formData = new FormData()
 
+        // Update file validation status to indicate processing
+        setFiles((prevFiles: FileItem[]) => prevFiles.map(f =>
+          f.id === file.id ? { ...f, validationStatus: undefined } : f
+        ))
+
         // Add the current file to formData
         formData.append("file", file.originalFile)
 
@@ -156,6 +167,18 @@ const DocumentProcessing = ({
           if (result.analysis) {
             setAnalysisResults(result.analysis)
           }
+
+          // Update file validation status based on content detection
+          const hasContent = result.rows && result.rows.length > 0
+          setFiles(prevFiles => prevFiles.map(f => 
+            f.id === file.id ? {
+              ...f,
+              validationStatus: {
+                hasContent,
+                needsReplacement: !hasContent
+              }
+            } : f
+          ))
 
           // Add file name to the result
           if (result && result.rows) {
@@ -461,6 +484,7 @@ const DocumentProcessing = ({
     </div>
   )
 }
+
 
 export default function Home() {
   const router = useRouter()
@@ -944,6 +968,7 @@ export default function Home() {
 
   // Logo click handler
   const handleLogoClick = () => {
+    handleReset()
     router.push('/')
   }
 
@@ -1268,9 +1293,47 @@ export default function Home() {
                           />
                         </svg>
                       </div>
-                      <div>
-                        <p className="text-[#111928] dark:text-white">{file.name}</p>
-                        <p className="text-sm text-[#6b7280] dark:text-[#9ca3af]">{file.size}</p>
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <p className="text-[#111928] dark:text-white">{file.name}</p>
+                          <p className="text-sm text-[#6b7280] dark:text-[#9ca3af]">{file.size}</p>
+                        </div>
+                        {file.validationStatus && (
+                          <div className="flex items-center">
+                            {file.validationStatus.hasContent ? (
+                              <svg
+                                className="w-5 h-5 text-green-500"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-red-500">No table or text</span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+                                    if (fileInput) {
+                                      fileInput.click();
+                                    }
+                                  }}
+                                  className="text-sm text-blue-500 hover:underline"
+                                >
+                                  Replace
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <button
@@ -1320,6 +1383,7 @@ export default function Home() {
             handleBackStep={handleBackStep}
             text={text}
             files={files}
+            setFiles={setFiles}
             language={documentLanguage}
           />
         )}
