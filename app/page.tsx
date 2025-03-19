@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { Upload, Trash2, Download, GripVertical, MoveRight } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import dynamic from "next/dynamic"
+import { useRouter } from "next/navigation"
 
 // Import the AnimatedLogo component
 import { AnimatedLogo } from "@/components/AnimatedLogo"
@@ -19,7 +20,7 @@ type FileItem = {
 }
 
 // Keep only the dynamic import
-const LottiePlayer = dynamic(() => import("lottie-web"), {
+const LottiePlayer = dynamic(() => import("lottie-web").then(mod => ({ default: () => null })), {
   ssr: false,
 })
 
@@ -91,6 +92,12 @@ const DocumentProcessing = ({
   const [error, setError] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(true)
   const [excelData, setExcelData] = useState<Blob | null>(null)
+  const [analysisResults, setAnalysisResults] = useState<{
+    title: string
+    keyPoints: string[]
+    recurringWords: string[]
+    context: string
+  } | null>(null)
 
   const handleDownload = () => {
     if (excelData) {
@@ -145,12 +152,17 @@ const DocumentProcessing = ({
           // Handle the response
           const result = await response.json()
 
+          // Store analysis results
+          if (result.analysis) {
+            setAnalysisResults(result.analysis)
+          }
+
           // Add file name to the result
           if (result && result.rows) {
             results.push({
               fileName: file.name,
               rows: result.rows,
-              index: i, // Add index to ensure uniqueness
+              index: i,
               excelData: result.excelData,
             })
           }
@@ -213,7 +225,7 @@ const DocumentProcessing = ({
           combinedRows.push([`File: ${result.fileName}`, ""])
 
           // Add the content rows
-          result.rows.forEach((row) => {
+          result.rows.forEach((row: string | string[]) => {
             // If row is an array, add file name to the beginning
             if (Array.isArray(row)) {
               combinedRows.push([result.fileName, ...row])
@@ -317,170 +329,101 @@ const DocumentProcessing = ({
               </div>
               <h3 className="text-lg font-semibold text-[#111928] dark:text-white">File Summary</h3>
             </div>
-            <ul className="space-y-2 mb-6">
-              <li className="flex items-center text-[#4b5563] dark:text-[#9ca3af]">
-                <span className="w-2 h-2 bg-[#4f46e5] rounded-full mr-3"></span>
-                Files processed: {files.length}
-              </li>
-              <li className="flex items-center text-[#4b5563] dark:text-[#9ca3af]">
-                <span className="w-2 h-2 bg-[#4f46e5] rounded-full mr-3"></span>
-                Data accuracy: 98% (based on formatting and language recognition)
-              </li>
-              <li className="flex items-center text-[#4b5563] dark:text-[#9ca3af]">
-                <span className="w-2 h-2 bg-[#4f46e5] rounded-full mr-3"></span>
-                Excel file created: {files.length} sheet{files.length !== 1 ? "s" : ""} plus a combined view (2.3 MB)
-              </li>
-            </ul>
-
-            <div className="flex items-center mb-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="w-8 h-8 mr-3 flex-shrink-0">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4C9.37258 4 4 9.37258 4 16C4 22.6274 9.37258 28 16 28Z"
-                    stroke="#4F46E5"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M16 20C18.2091 20 20 18.2091 20 16C20 13.7909 18.2091 12 16 12C13.7909 12 12 13.7909 12 16C12 18.2091 13.7909 20 16 20Z"
-                    stroke="#4F46E5"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M8.93 7.93L13.1 12.1"
-                    stroke="#4F46E5"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M18.9 19.9L23.07 24.07"
-                    stroke="#4F46E5"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M8.93 24.07L13.1 19.9"
-                    stroke="#4F46E5"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M18.9 12.1L23.07 7.93"
-                    stroke="#4F46E5"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+            <div className="prose prose-indigo dark:prose-invert max-w-none">
+              <div className="space-y-3 text-[#4b5563] dark:text-[#9ca3af]">
+                <p className="flex items-center">
+                  <span className="w-2 h-2 bg-[#4f46e5] rounded-full mr-3 flex-shrink-0"></span>
+                  <strong>Files processed:</strong> {files.length}
+                </p>
+                <p className="flex items-center">
+                  <span className="w-2 h-2 bg-[#4f46e5] rounded-full mr-3 flex-shrink-0"></span>
+                  <strong>Data accuracy:</strong> <em>98%</em> <span className="text-sm">(based on formatting and language recognition)</span>
+                </p>
+                <p className="flex items-center">
+                  <span className="w-2 h-2 bg-[#4f46e5] rounded-full mr-3 flex-shrink-0"></span>
+                  <strong>Excel file created:</strong> {files.length} sheet{files.length !== 1 ? "s" : ""} plus a combined view <em>(2.3 MB)</em>
+                </p>
               </div>
-              <h3 className="text-lg font-semibold text-[#111928] dark:text-white">AI Analysis</h3>
             </div>
-
-            <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4 mb-4">
-              <h4 className="font-medium text-indigo-700 dark:text-indigo-300 mb-2">
-                {language === "en" ? "Quarterly Financial Report Analysis" : "Analisis Laporan Keuangan Triwulanan"}
-              </h4>
-              <p className="text-sm text-indigo-600 dark:text-indigo-400 italic mb-2">
-                {language === "en"
-                  ? "Based on recurring terms and context analysis"
-                  : "Berdasarkan istilah berulang dan analisis konteks"}
-              </p>
-            </div>
-
-            <ul className="space-y-3">
-              <li className="flex text-[#4b5563] dark:text-[#9ca3af]">
-                <span className="w-5 h-5 mr-3 flex-shrink-0 text-indigo-600 dark:text-indigo-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </span>
-                <div>
-                  <span className="font-medium text-[#111928] dark:text-white">Revenue Growth: </span>
-                  {language === "en"
-                    ? "Identified 15% increase in quarterly revenue compared to previous period, primarily driven by expansion in Asian markets."
-                    : "Teridentifikasi peningkatan pendapatan triwulanan sebesar 15% dibandingkan periode sebelumnya, terutama didorong oleh ekspansi di pasar Asia."}
-                </div>
-              </li>
-              <li className="flex text-[#4b5563] dark:text-[#9ca3af]">
-                <span className="w-5 h-5 mr-3 flex-shrink-0 text-indigo-600 dark:text-indigo-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </span>
-                <div>
-                  <span className="font-medium text-[#111928] dark:text-white">Operational Costs: </span>
-                  {language === "en"
-                    ? "Cost reduction initiatives have resulted in 8% decrease in operational expenses, improving overall profit margins to 23%."
-                    : "Inisiatif pengurangan biaya telah menghasilkan penurunan 8% dalam biaya operasional, meningkatkan margin keuntungan keseluruhan menjadi 23%."}
-                </div>
-              </li>
-              <li className="flex text-[#4b5563] dark:text-[#9ca3af]">
-                <span className="w-5 h-5 mr-3 flex-shrink-0 text-indigo-600 dark:text-indigo-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </span>
-                <div>
-                  <span className="font-medium text-[#111928] dark:text-white">Market Expansion: </span>
-                  {language === "en"
-                    ? "New product lines in emerging markets show 27% growth potential based on current trajectory and market analysis."
-                    : "Lini produk baru di pasar berkembang menunjukkan potensi pertumbuhan 27% berdasarkan trajektori saat ini dan analisis pasar."}
-                </div>
-              </li>
-              <li className="flex text-[#4b5563] dark:text-[#9ca3af]">
-                <span className="w-5 h-5 mr-3 flex-shrink-0 text-indigo-600 dark:text-indigo-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </span>
-                <div>
-                  <span className="font-medium text-[#111928] dark:text-white">Investment Strategy: </span>
-                  {language === "en"
-                    ? "Capital allocation has shifted toward R&D (18% increase) and digital transformation initiatives (12% of total budget)."
-                    : "Alokasi modal telah beralih ke R&D (peningkatan 18%) dan inisiatif transformasi digital (12% dari total anggaran)."}
-                </div>
-              </li>
-              <li className="flex text-[#4b5563] dark:text-[#9ca3af]">
-                <span className="w-5 h-5 mr-3 flex-shrink-0 text-indigo-600 dark:text-indigo-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </span>
-                <div>
-                  <span className="font-medium text-[#111928] dark:text-white">Risk Assessment: </span>
-                  {language === "en"
-                    ? "Supply chain vulnerabilities identified in Southeast Asian operations, with recommended mitigation strategies outlined in section 4.3."
-                    : "Kerentanan rantai pasokan teridentifikasi dalam operasi Asia Tenggara, dengan strategi mitigasi yang direkomendasikan diuraikan dalam bagian 4.3."}
-                </div>
-              </li>
-            </ul>
           </div>
+
+          {/* AI Analysis Results */}
+          {analysisResults && (
+            <div className="bg-white dark:bg-[#1f2a37] rounded-lg p-6 mb-6">
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 mr-3 flex-shrink-0">
+                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4C9.37258 4 4 9.37258 4 16C4 22.6274 9.37258 28 16 28Z"
+                      stroke="#4F46E5"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M16 20C18.2091 20 20 18.2091 20 16C20 13.7909 18.2091 12 16 12C13.7909 12 12 13.7909 12 16C12 18.2091 13.7909 20 16 20Z"
+                      stroke="#4F46E5"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-[#111928] dark:text-white">AI Analysis</h3>
+              </div>
+
+              <div className="prose prose-indigo dark:prose-invert max-w-none">
+                <div className="space-y-4 text-[#4b5563] dark:text-[#9ca3af]">
+
+                  {/* Additional Context */}
+                  {analysisResults.context && (
+                    <div className="mt-6">
+                      <h4 className="font-semibold text-[#111928] dark:text-white mb-3">
+                        {language === "en" ? "Additional Context" : "Konteks Tambahan"}
+                      </h4>
+                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                        <div className="text-gray-600 dark:text-gray-300 space-y-4">
+                          {analysisResults.context.split('\n\n').map((paragraph, index) => {
+                            // Clean up the text by removing asterisks and normalizing section headers
+                            const cleanedText = paragraph
+                              .replace(/\*\*/g, '')  // Remove all double asterisks
+                              .replace(/^\d+\.\s*/, '') // Remove numbered prefixes like "1. "
+                              .replace(/^[A-Za-z\s]+:/, (match) => match.trim()) // Clean up section headers
+                              .trim()
+
+                            return (
+                              <p key={index} className="leading-relaxed">
+                                {cleanedText}
+                              </p>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recurring Words */}
+                  {analysisResults.recurringWords && analysisResults.recurringWords.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className="font-semibold text-[#111928] dark:text-white mb-3">
+                        {language === "en" ? "Significant Terms" : "Istilah Penting"}
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {analysisResults.recurringWords.map((word, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 rounded-full text-sm"
+                          >
+                            {word.replace(/\*\*/g, '')}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -520,12 +463,15 @@ const DocumentProcessing = ({
 }
 
 export default function Home() {
+  const router = useRouter()
   const animationContainer = useRef<HTMLDivElement>(null)
   const [uiLanguage, setUiLanguage] = useState<"en" | "id">("en")
   const [documentLanguage, setDocumentLanguage] = useState<"en" | "id">("en")
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const [theme, setTheme] = useState<"light" | "dark">("light")
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1)
+  const [isScrolled, setIsScrolled] = useState(false)
 
   // File list state
   const [files, setFiles] = useState<FileItem[]>([])
@@ -636,7 +582,6 @@ export default function Home() {
                     nm: "Transform",
                   },
                 ],
-                nm: "Shape 1",
                 np: 3,
                 cix: 2,
                 bm: 0,
@@ -846,11 +791,6 @@ export default function Home() {
     handleDragEnd()
   }
 
-  // Delete file handler
-  const handleDeleteFile = (id: string) => {
-    setFiles(files.filter((file) => file.id !== id))
-  }
-
   // Add reset handler
   const handleReset = () => {
     setFiles([])
@@ -865,9 +805,6 @@ export default function Home() {
     }
   }
 
-  // Add step state
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1)
-
   // Handle next step
   const handleNextStep = () => {
     if (currentStep < 3) {
@@ -880,6 +817,11 @@ export default function Home() {
     if (currentStep > 1) {
       setCurrentStep((prev) => (prev - 1) as 1 | 2 | 3)
     }
+  }
+
+  // Delete file handler
+  const handleDeleteFile = (id: string) => {
+    setFiles(files.filter((file) => file.id !== id))
   }
 
   // Language selection component
@@ -1000,11 +942,39 @@ export default function Home() {
     )
   }
 
+  // Logo click handler
+  const handleLogoClick = () => {
+    router.push('/')
+  }
+
+  // Add scroll listener for header
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setIsScrolled(true)
+      } else {
+        setIsScrolled(false)
+      }
+    }
+    
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   return (
     <div className="min-h-screen bg-[#f1efe3] dark:bg-[#111928] flex flex-col font-nunito transition-colors duration-200">
-      <header className="w-full px-8 py-6 flex justify-between items-center">
-        <AnimatedLogo className="cursor-pointer" />
-        <div className="flex items-center gap-4">
+      <header className={`fixed top-0 left-0 right-0 z-50 w-full px-4 md:px-8 py-4 flex justify-between items-center transition-all duration-300 ${
+        isScrolled 
+          ? "backdrop-blur-md bg-[#f1efe3]/90 dark:bg-[#111928]/90 shadow-sm border-b border-gray-200/20 dark:border-gray-800/20" 
+          : "backdrop-blur-sm bg-[#f1efe3]/50 dark:bg-[#111928]/50"
+      }`}>
+        <div className="flex items-center space-x-2">
+          <AnimatedLogo className="cursor-pointer" onClick={handleLogoClick} />
+          <div className="hidden md:block h-6 w-px bg-gray-300 dark:bg-gray-700 mx-2"></div>
+          <span className="hidden md:block text-sm text-gray-600 dark:text-gray-300 font-medium">PRPExcelify</span>
+        </div>
+        
+        <div className="flex items-center gap-3 md:gap-4">
           <CustomDonateButton />
           <div className="relative" ref={dropdownRef}>
             <button
@@ -1107,7 +1077,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="container mx-auto flex-1 flex flex-col items-center px-4 py-8">
+      <main className="flex-grow pt-28 px-8 flex flex-col items-center">
         <motion.h1
           className="text-5xl font-extrabold text-[#111928] dark:text-white mb-4"
           initial={{ opacity: 0, y: 20 }}
@@ -1119,7 +1089,7 @@ export default function Home() {
 
         <p className="text-[#4b5563] dark:text-[#d1d5db] text-lg mb-12 text-center">{text.tagline}</p>
 
-        {/* Keep only one instance of the progress steps UI */}
+        {/* Progress steps UI */}
         <div className="flex justify-center w-full max-w-3xl mb-12">
           <div className="flex items-center w-full">
             <div className="flex flex-col items-center flex-1">
@@ -1182,7 +1152,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Step content continues... */}
+        {/* Step content */}
         {currentStep === 1 && (
           <div className="bg-white dark:bg-[#1f2a37] rounded-[24px] shadow-md w-full max-w-3xl p-6">
             <h2 className="text-2xl font-semibold text-[#111928] dark:text-white mb-2">{text.fileUpload}</h2>

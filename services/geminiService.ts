@@ -109,7 +109,44 @@ function createDefaultAnalysis(
   }
 }
 
-// Function to analyze text and extract key information
+// Function to analyze word frequency and patterns
+async function analyzeWordFrequency(text: string): Promise<{ word: string; frequency: number; significance: number }[]> {
+  // Remove common stop words and punctuation
+  const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by']);
+  const words = text.toLowerCase()
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
+    .split(/\s+/)
+    .filter(word => word.length > 2 && !stopWords.has(word));
+
+  // Count word frequencies
+  const wordFreq = new Map<string, number>();
+  words.forEach(word => {
+    wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
+  });
+
+  // Calculate significance based on frequency and position
+  const wordAnalysis = Array.from(wordFreq.entries()).map(([word, freq]) => {
+    // Calculate significance based on:
+    // 1. Frequency of occurrence
+    // 2. Position in document (words appearing in first paragraph get higher weight)
+    // 3. Word length (longer words often more significant)
+    const firstParagraph = text.split('\n\n')[0].toLowerCase();
+    const positionBonus = firstParagraph.includes(word) ? 1.5 : 1;
+    const lengthBonus = Math.min(word.length / 5, 1.5);
+    const significance = freq * positionBonus * lengthBonus;
+
+    return {
+      word,
+      frequency: freq,
+      significance
+    };
+  });
+
+  // Sort by significance and return top results
+  return wordAnalysis.sort((a, b) => b.significance - a.significance);
+}
+
+// Enhanced function to analyze text and extract key information
 async function analyzeTextContext(
   text: string,
   language: string,
@@ -120,47 +157,58 @@ async function analyzeTextContext(
   context: string
 }> {
   try {
-    // If the text is too short, just return a default analysis
     if (text.length < 100) {
-      return createDefaultAnalysis(text, language)
+      return createDefaultAnalysis(text, language);
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+    // Analyze word frequency
+    const wordAnalysis = await analyzeWordFrequency(text);
+    const topWords = wordAnalysis.slice(0, 10).map(w => w.word);
 
-    // First, try to get a simple analysis without JSON formatting
-    const simplePrompt = `
-      Analyze the following text and provide:
-      1. A concise title (max 10 words)
-      2. 5 key points summarizing the main information
-      3. Top 5 recurring words or phrases
-      4. A brief context about the content
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+    const enhancedPrompt = `
+      Analyze the following text and provide a comprehensive analysis:
       
       Text to analyze:
       ${text.substring(0, 4000)} ${text.length > 4000 ? "... (text truncated for brevity)" : ""}
       
+      Most significant words identified: ${topWords.join(', ')}
       Language: ${language}
       
+      Please provide:
+      1. A concise but descriptive title (max 10 words)
+      2. 5 key points that capture the main insights and implications
+      3. Top 5 most significant recurring concepts or themes (not just individual words)
+      4. A contextual summary that:
+         - Identifies the document type and purpose
+         - Highlights key relationships between concepts
+         - Notes any significant patterns or trends
+         - Provides relevant industry or domain context
+      
       Format your response as plain text with clear section headers.
-    `
+    `;
 
-    const result = await retryApiCall(() => model.generateContent(simplePrompt))
-    const response = await result.response
-    const analysisText = response.text()
+    const result = await retryApiCall(() => model.generateContent(enhancedPrompt));
+    const response = await result.response;
+    const analysisText = response.text();
 
-    // Parse the plain text response
-    const analysis = parseTextAnalysis(analysisText, language)
+    // Parse the enhanced analysis
+    const analysis = parseTextAnalysis(analysisText, language);
 
-    // If we successfully parsed the analysis, return it
     if (analysis) {
-      return analysis
+      // Enrich with web search
+      const enrichedContext = await enrichContextWithWebSearch(text, topWords, language);
+      return {
+        ...analysis,
+        context: `${analysis.context}\n\nAdditional Context:\n${enrichedContext}`
+      };
     }
 
-    // If parsing failed, return a default analysis
-    return createDefaultAnalysis(text, language)
+    return createDefaultAnalysis(text, language);
   } catch (error) {
-    console.error("Error in text analysis:", error)
-    // Fallback when API fails completely
-    return createDefaultAnalysis(text, language)
+    console.error("Error in text analysis:", error);
+    return createDefaultAnalysis(text, language);
   }
 }
 
@@ -262,38 +310,48 @@ function parseTextAnalysis(
   }
 }
 
-// Function to perform web search and enrich context
-async function enrichContextWithWebSearch(text: string, recurringWords: string[], language: string): Promise<string> {
+// Enhanced web search function
+async function enrichContextWithWebSearch(text: string, significantWords: string[], language: string): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const searchPrompt = `
-    Based on the following text and recurring words, provide additional relevant information and context.
-    Focus on enriching the understanding of the main topics and concepts.
-    
-    Text excerpt: 
-    ${text.substring(0, 2000)}${text.length > 2000 ? "... (text truncated for brevity)" : ""}
-    
-    Recurring Words: ${recurringWords.join(", ")}
-    Language: ${language}
-    
-    Provide a comprehensive but concise analysis (max 200 words) in ${language} that includes:
-    1. Related concepts and their relationships
-    2. Industry-specific context
-    3. Potential implications or trends
-    
-    Format the response as a well-structured paragraph.
-  `
+      Based on the following text and significant words, provide enriched context and insights.
+      
+      Text excerpt: 
+      ${text.substring(0, 2000)}${text.length > 2000 ? "... (text truncated for brevity)" : ""}
+      
+      Significant Words and Concepts: ${significantWords.join(", ")}
+      Language: ${language}
+      
+      Please provide:
+      1. Industry or Domain Context:
+         - Relevant background information
+         - Current trends or developments
+         - Common practices or standards
+      
+      2. Related Insights:
+         - Connections to broader themes
+         - Potential implications
+         - Similar cases or examples
+      
+      3. Additional Considerations:
+         - Key challenges or opportunities
+         - Best practices or recommendations
+         - Future outlook
+      
+      Format the response as a well-structured analysis in ${language}, focusing on practical insights and actionable information.
+      Keep the total response under 300 words while maintaining depth and relevance.
+    `;
 
-    const result = await retryApiCall(() => model.generateContent(searchPrompt))
-    const response = await result.response
-    return response.text()
+    const result = await retryApiCall(() => model.generateContent(searchPrompt));
+    const response = await result.response;
+    return response.text();
   } catch (error) {
-    console.error("Error in context enrichment:", error)
-    // Fallback response if API fails
+    console.error("Error in context enrichment:", error);
     return language === "en"
       ? "Additional context could not be generated at this time. Please refer to the extracted text for information."
-      : "Konteks tambahan tidak dapat dibuat saat ini. Silakan merujuk ke teks yang diekstrak untuk informasi."
+      : "Konteks tambahan tidak dapat dibuat saat ini. Silakan merujuk ke teks yang diekstrak untuk informasi.";
   }
 }
 
