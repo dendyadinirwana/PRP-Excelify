@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST="{\"app/page.tsx -> lottie-web\":{\"id\":\"app/page.tsx -> lottie-web\",\"files\":[\"static/chunks/_app-pages-browser_node_modules_lottie-web_build_player_lottie_js.js\"]},\"app/page.tsx -> xlsx\":{\"id\":\"app/page.tsx -> xlsx\",\"files\":[\"static/chunks/_app-pages-browser_node_modules_xlsx_xlsx_mjs.js\"]}}"
