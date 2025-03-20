@@ -17,12 +17,22 @@ export async function OPTIONS() {
 export async function POST(request: Request) {
   try {
     const formData = await request.formData()
-    const file = formData.get("file") as File
-    const language = (formData.get("language") as string) || "en"
+    const file = formData.get("file")
 
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 })
+    if (!file || !(file instanceof File)) {
+      return new NextResponse("No file provided", { status: 400 })
     }
+
+    // Add file type validation
+    const allowedTypes = ["image/jpeg", "image/png", "image/tiff"]
+    if (!allowedTypes.includes(file.type)) {
+      return new NextResponse(
+        "Invalid file type. Please upload an image (JPEG, PNG, or TIFF)",
+        { status: 400 },
+      )
+    }
+
+    const language = (formData.get("language") as string) || "en"
 
     try {
       const result = await processImageWithGemini(
@@ -62,6 +72,6 @@ export async function POST(request: Request) {
     }
   } catch (error: any) {
     console.error("API route error:", error)
-    return NextResponse.json({ error: error.message || "Failed to process request" }, { status: 500 })
+    return new NextResponse("An error occurred while processing the image", { status: 500 })
   }
 }
