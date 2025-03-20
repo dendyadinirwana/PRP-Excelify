@@ -1322,7 +1322,7 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="container mx-auto p-4 text-left text-[#6b7280] dark:text-[#9ca3af]">{text.copyright}</footer>
+      <footer className="container w-full p-4 text-left text-[#6b7280] dark:text-[#9ca3af]">{text.copyright}</footer>
       <TrakteerButton />
     </div>
   )
