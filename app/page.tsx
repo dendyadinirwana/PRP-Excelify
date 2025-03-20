@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"
 
 // Import the AnimatedLogo component
 import { AnimatedLogo } from "@/components/AnimatedLogo"
+import { TrakteerButton } from "@/components/TrakteerButton"
 
 
 // Define a file type for our file list
@@ -401,7 +402,7 @@ const DocumentProcessing = ({
             {progress === 100 && excelData && (
               <button
                 onClick={handleDownload}
-                className="relative px-6 py-2 bg-[#4f46e5] text-white rounded-full font-medium overflow-hidden transition-all duration-300 hover:bg-[#4338ca] hover:shadow-md group"
+                className="relative px-6 py-2 bg-[#1f2a37] dark:bg-white text-white dark:text-[#1f2a37] rounded-full font-medium overflow-hidden transition-all duration-300 hover:bg-[#374151] dark:hover:bg-gray-100 hover:shadow-md group"
               >
                 <span className="relative z-10 flex items-center gap-2">
                   <Download className="h-5 w-5" />
@@ -1321,7 +1322,8 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="container mx-auto p-4 text-center text-[#6b7280] dark:text-[#9ca3af]">{text.copyright}</footer>
+      <footer className="container mx-auto p-4 text-left text-[#6b7280] dark:text-[#9ca3af]">{text.copyright}</footer>
+      <TrakteerButton />
     </div>
   )
 }
