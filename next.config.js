@@ -1,8 +1,19 @@
+/** @type {import('next').NextConfig} */
 module.exports = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-    responseLimit: false,
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/json',
+          },
+        ],
+      },
+    ]
+  },
+  experimental: {
+    serverExternalPackages: [],
   },
 }
