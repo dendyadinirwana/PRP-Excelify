@@ -323,78 +323,10 @@ const DocumentProcessing = ({
       ) : (
         <div className="w-full">
           <h2 className="text-2xl font-bold mb-4 text-[#111928] dark:text-white">Processing Complete</h2>
-          <div className="bg-white dark:bg-[#1f2a37] rounded-lg p-6 mb-6">
-            <div className="flex items-center mb-4">
-              <div className="w-8 h-8 mr-3 flex-shrink-0">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M16 2L3 9L16 16L29 9L16 2Z"
-                    stroke="#4F46E5"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M3 23L16 30L29 23"
-                    stroke="#4F46E5"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M3 16L16 23L29 16"
-                    stroke="#4F46E5"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-[#111928] dark:text-white">File Summary</h3>
-            </div>
-            <div className="prose prose-indigo dark:prose-invert max-w-none">
-              <div className="space-y-3 text-[#4b5563] dark:text-[#9ca3af]">
-                <p className="flex items-center">
-                  <span className="w-2 h-2 bg-[#4f46e5] rounded-full mr-3 flex-shrink-0"></span>
-                  <strong>Files processed:</strong> {files.length}
-                </p>
-                <p className="flex items-center">
-                  <span className="w-2 h-2 bg-[#4f46e5] rounded-full mr-3 flex-shrink-0"></span>
-                  <strong>Data accuracy:</strong> <em>98%</em> <span className="text-sm">(based on formatting and language recognition)</span>
-                </p>
-                <p className="flex items-center">
-                  <span className="w-2 h-2 bg-[#4f46e5] rounded-full mr-3 flex-shrink-0"></span>
-                  <strong>Excel file created:</strong> {files.length} sheet{files.length !== 1 ? "s" : ""} plus a combined view <em>(2.3 MB)</em>
-                </p>
-              </div>
-            </div>
-          </div>
 
           {/* AI Analysis Results */}
           {analysisResults && (
-            <div className="bg-white dark:bg-[#1f2a37] rounded-lg p-6 mb-6">
-              <div className="flex items-center mb-4">
-                <div className="w-8 h-8 mr-3 flex-shrink-0">
-                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      d="M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4C9.37258 4 4 9.37258 4 16C4 22.6274 9.37258 28 16 28Z"
-                      stroke="#4F46E5"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M16 20C18.2091 20 20 18.2091 20 16C20 13.7909 18.2091 12 16 12C13.7909 12 12 13.7909 12 16C12 18.2091 13.7909 20 16 20Z"
-                      stroke="#4F46E5"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-[#111928] dark:text-white">AI Analysis</h3>
-              </div>
-
+            <div className="bg-[#F9FAFB] dark:bg-[#1f2a37] rounded-lg p-6 mb-6">
               <div className="prose prose-indigo dark:prose-invert max-w-none">
                 <div className="space-y-4 text-[#4b5563] dark:text-[#9ca3af]">
 

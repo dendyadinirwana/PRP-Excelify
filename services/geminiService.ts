@@ -186,7 +186,7 @@ async function analyzeTextContext(
          - Notes any significant patterns or trends
          - Provides relevant industry or domain context
       
-      Format your response as plain text with clear section headers.
+      Format your response as plain text with clear section headers. Do not use any text formatting like bold, italic, or other markdown/HTML formatting in your response.
     `;
 
     const result = await retryApiCall(() => model.generateContent(enhancedPrompt));
@@ -341,7 +341,8 @@ async function enrichContextWithWebSearch(text: string, significantWords: string
          - Future outlook
       
       Format the response as a well-structured analysis in ${language}, focusing on practical insights and actionable information.
-      Keep the total response under 300 words while maintaining depth and relevance.
+      Keep the total response under 200 words while maintaining depth and relevance.
+      Do not use any text formatting like bold, italic, or other markdown/HTML formatting in your response.
     `;
 
     const result = await retryApiCall(() => model.generateContent(searchPrompt));
@@ -384,7 +385,7 @@ export const processImageWithGemini = async (
         : "Extract all text from this image, focusing on Bahasa Indonesia content."
 
     // Add table detection to the prompt
-    const fullPrompt = `${languagePrompt} If the image contains any structured data, tables, or spreadsheet-like content, please organize it as a table. Return your response in a format ready to be converted to an Excel spreadsheet with the correct structure. Maintain column and row alignments as shown in the image.`
+    const fullPrompt = `${languagePrompt} If the image contains any structured data, tables, or spreadsheet-like content, please organize it as a table. Return your response in a format ready to be converted to an Excel spreadsheet with the correct structure. Maintain column and row alignments as shown in the image. Do not use any text formatting like bold, italic, or other markdown/HTML formatting in your response.`
 
     // Make the API request
     if (progressCallback) progressCallback(40)
