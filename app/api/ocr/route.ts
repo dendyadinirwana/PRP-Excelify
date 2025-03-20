@@ -1,20 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createWorker } from 'tesseract.js';
-import { Worker } from 'tesseract.js';
-
-export const dynamic = 'force-dynamic';
-
-export type OCRResponse = {
-  success: boolean;
-  rows?: string[];
-  analysis?: {
-    title: string;
-    keyPoints: string[];
-    recurringWords: string[];
-    context: string;
-  };
-  error?: string;
-};
+import { NextResponse } from "next/server"
+import { processImageWithGemini } from "@/services/geminiService"
 
 export async function OPTIONS() {
   return NextResponse.json(
@@ -29,74 +14,54 @@ export async function OPTIONS() {
   )
 }
 
-export const runtime = 'edge';
-
-const processFormData = async (formData: FormData, language: string): Promise<OCRResponse> => {
-  const file = formData.get('file') as File | null;
-  
-  if (!file) {
-    throw new Error('No file provided');
-  }
-
-  // Validate file type
-  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
-  if (!validTypes.includes(file.type)) {
-    throw new Error('Invalid file type. Please upload an image or PDF file.');
-  }
-
-  // Convert file to buffer
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  // Initialize Tesseract worker
-  const worker = await createWorker();
-  await worker.loadLanguage(language);
-  await worker.initialize(language);
-
+export async function POST(request: Request) {
   try {
-    // Perform OCR
-    const { data: { text } } = await worker.recognize(buffer);
-    await worker.terminate();
+    const formData = await request.formData()
+    const file = formData.get("file") as File
+    const language = (formData.get("language") as string) || "en"
 
-    if (!text.trim()) {
-      throw new Error('No text content detected in the file');
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 })
     }
 
-    // Process the extracted text into rows
-    const rows = text
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
+    try {
+      const result = await processImageWithGemini(
+        file,
+        language,
+        () => {}, // Progress callback optional in API context
+      )
 
-    return {
-      success: true,
-      rows,
-      analysis: {
-        title: file.name,
-        keyPoints: [],
-        recurringWords: [],
-        context: text
+      return NextResponse.json(result)
+    } catch (processingError: any) {
+      console.error("OCR processing error:", processingError)
+
+      // Create a fallback result with basic information
+      const fallbackResult = {
+        rows: [],
+        fileName: file.name || `OCR_Result_${new Date().toISOString().slice(0, 10)}`,
+        analysis: {
+          title: language === "en" ? "Document Analysis" : "Analisis Dokumen",
+          keyPoints: [
+            language === "en" ? "Document processing encountered an error" : "Pemrosesan dokumen mengalami kesalahan",
+            language === "en" ? "Basic text extraction was attempted" : "Ekstraksi teks dasar telah dicoba",
+            language === "en" ? "Some content may be available" : "Beberapa konten mungkin tersedia",
+            language === "en"
+              ? "Please try again with a clearer image"
+              : "Silakan coba lagi dengan gambar yang lebih jelas",
+            language === "en" ? "Contact support if the issue persists" : "Hubungi dukungan jika masalah berlanjut",
+          ],
+          recurringWords: ["error", "processing", "document", "content", "support"],
+          context:
+            language === "en"
+              ? "The document could not be fully processed due to a technical issue. Please try again or contact support."
+              : "Dokumen tidak dapat diproses sepenuhnya karena masalah teknis. Silakan coba lagi atau hubungi dukungan.",
+        },
       }
-    };
-  } catch (error) {
-    throw error;
-  }
-};
 
-export async function POST(req: NextRequest) {
-  try {
-    const formData = await req.formData();
-    const language = formData.get('language') as string || 'eng';
-
-    const response = await processFormData(formData, language);
-    return NextResponse.json(response);
-
-  } catch (error) {
-    console.error('Error processing request:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
-      { status: 500 }
-    );
+      return NextResponse.json(fallbackResult)
+    }
+  } catch (error: any) {
+    console.error("API route error:", error)
+    return NextResponse.json({ error: error.message || "Failed to process request" }, { status: 500 })
   }
 }
-

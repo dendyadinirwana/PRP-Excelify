@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-module.exports = {
+const nextConfig = {
   async headers() {
     return [
       {
@@ -13,5 +13,19 @@ module.exports = {
       },
     ]
   },
+  webpack: (config, { isServer }) => {
+    // Handle worker loading
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+    };
 
+    return config;
+  },
+  experimental: {
+    serverComponentsExternalPackages: ['tesseract.js'],
+  },
 }
+
+module.exports = nextConfig
